@@ -1,17 +1,22 @@
 #pragma once 
 
 #include <stdio.h>
+#include <iostream>
+
+
 
 #ifdef _WIN32
   #include <windows.h>
   #include <io.h>
-
-#else 
+  #define PLONG long*
+#elif defined(__linux__)
+  #include <error.h>
   #include <unistd.h>
   #include <fcntl.h>
   #include <sys/stat.h>
-  #include <sys/file.h>
-
+  #include <sys/file.h> 
+  typedef void *PVOID;
+  #define PLONG long*
   #ifndef HANDLE 
     #define HANDLE int
   #endif
@@ -19,6 +24,7 @@
   #ifndef INVALID_HANDLE_VALUE
     #define INVALID_HANDLE_VALUE -1
   #endif
+
 
   #ifndef DWORD 
     #define DWORD unsigned long
@@ -53,7 +59,7 @@
 #endif
 
 #ifndef OPEN_EXISTING
-#define OPEN_EXISTING 0  /
+#define OPEN_EXISTING 0  
 #endif
 
 #ifndef OPEN_ALWAYS
@@ -66,14 +72,6 @@
 
 #ifndef FILE_ATTRIBUTE_NORMAL
 #define FILE_ATTRIBUTE_NORMAL 0  
-#endif
-
-#ifndef FILE_ATTRIBUTE_TEMPORARY
-#define FILE_ATTRIBUTE_TEMPORARY 0  
-#endif
-
-#ifndef FILE_FLAG_DELETE_ON_CLOSE
-#define FILE_FLAG_DELETE_ON_CLOSE 0  
 #endif
 
 #ifndef FILE_FLAG_SEQUENTIAL_SCAN
@@ -108,10 +106,6 @@
     #define LPCVOID  const void*
   #endif
 
-  #ifndef LPWORD
-    #define LPWORD   long*
-  #endif
-
   #ifndef LPVOID
     #define LPVOID   void*
   #endif
@@ -122,24 +116,58 @@
 
   #ifndef LPWORD
     #define LPWORD    WORD*
+  #endif  
+
+  #ifndef LPCWSTR
+    #define LPCWSTR  const char*
   #endif
+
+  #ifndef ULONG_PTR
+    #define ULONG_PTR unsigned long
+  #endif
+
+  #ifndef VOID
+    #define VOID void
+  #endif
+
 #endif
 
-HANDLE vsi_create_file(LPCSTR filePath,
+HANDLE vsi_create_file_w(LPCWSTR filePath,
                      DWORD accessMode,
                      DWORD shareMode,
-                     DWORD creationMode);
+                     DWORD creationMode, 
+                     int *errorCode = nullptr);
+
+HANDLE vsi_create_file_a(LPCSTR filePath,
+                     DWORD accessMode,
+                     DWORD shareMode,
+                     DWORD creationMode, 
+                     int *errorCode = nullptr);
 
 BOOL vsi_write_file(HANDLE &file, 
                     LPCVOID buffer, 
-                    DWORD numberOfBytesTOWrite);
+                    DWORD numberOfBytesTOWrite, 
+                    PLONG totalBytesWritten, 
+                    int *errorCode = nullptr);
 
 BOOL vsi_read_file(HANDLE &hFile, 
                   LPVOID buffer, 
-                  DWORD numberOfBytesToRead);
+                  DWORD numberOfBytesToRead, 
+                  PLONG totalBytesRead, 
+                  int *errorCode = nullptr);
 
 void vsi_close_file(HANDLE &hFile);
 
 BOOL vsi_seek_file(HANDLE &hFile, 
                   LONG lOffset, 
-                  DWORD origin);
+                  DWORD origin, int *errorCode = nullptr);
+
+BOOL vsi_copy_file(LPCSTR sourceFilePath, 
+                  LPCSTR destinationFilePath, 
+                  int *errorCode = nullptr);
+
+BOOL vsi_rename_file(LPCSTR oldFilePath, 
+                  LPCSTR newName, 
+                  int *errorCode = nullptr);
+
+BOOL vsi_delete_file(LPCSTR filePath, int *errorCode = nullptr);
