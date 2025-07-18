@@ -132,42 +132,42 @@
 
 #endif
 
-HANDLE vsi_create_file_w(LPCWSTR filePath,
-                     DWORD accessMode,
-                     DWORD shareMode,
-                     DWORD creationMode, 
+HANDLE vsiCreateFileW(LPCWSTR lpFileName,
+                     DWORD dwDesiredAccess,
+                     DWORD dwShareMode,
+                     DWORD dwCreationDisposition, 
                      int *errorCode = nullptr);
 
-HANDLE vsi_create_file_a(LPCSTR filePath,
-                     DWORD accessMode,
-                     DWORD shareMode,
-                     DWORD creationMode, 
+HANDLE vsiCreateFileA(LPCSTR lpFileName,
+                     DWORD dwDesiredAccess,
+                     DWORD dwShareMode,
+                     DWORD dwCreationDisposition, 
                      int *errorCode = nullptr);
 
-BOOL vsi_write_file(HANDLE &file, 
+BOOL vsiWriteFile(HANDLE &file, 
                     LPCVOID buffer, 
                     DWORD numberOfBytesTOWrite, 
                     PLONG totalBytesWritten, 
                     int *errorCode = nullptr);
 
-BOOL vsi_read_file(HANDLE &hFile, 
+BOOL vsiReadFile(HANDLE &hFile, 
                   LPVOID buffer, 
                   DWORD numberOfBytesToRead, 
                   PLONG totalBytesRead, 
                   int *errorCode = nullptr);
 
-void vsi_close_file(HANDLE &hFile);
+void vsiCloseFile(HANDLE &hFile);
 
-BOOL vsi_seek_file(HANDLE &hFile, 
+BOOL vsiSeekFile(HANDLE &hFile, 
                   LONG lOffset, 
                   DWORD origin, int *errorCode = nullptr);
 
-BOOL vsi_copy_file(LPCSTR sourceFilePath, 
-                  LPCSTR destinationFilePath, 
+BOOL vsiCopyFile(LPCSTR sourcelpFileName, 
+                  LPCSTR destinationlpFileName, 
                   int *errorCode = nullptr);
 
-BOOL vsi_rename_file(LPCSTR oldFilePath, 
-                  LPCSTR newName, 
+BOOL vsiRenameFile(LPCSTR oldlpFileName, 
+                  LPCSTR newlpName, 
                   int *errorCode = nullptr);
 
-BOOL vsi_delete_file(LPCSTR filePath, int *errorCode = nullptr);
+BOOL vsiDeleteFile(LPCSTR lpFileName, int *errorCode = nullptr);

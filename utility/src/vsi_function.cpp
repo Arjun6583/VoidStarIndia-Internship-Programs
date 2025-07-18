@@ -1,33 +1,36 @@
 #include "vsi_function.h"
 #include <stdio.h>
 #include <iostream>
-#define BUFFER_SIZE 1024
+#define ONE_KB 1024
 
-HANDLE vsi_create_file_w(LPCWSTR filePath,
-                     DWORD accessMode,
-                     DWORD shareMode,
-                     DWORD creationMode, int *errorCode)
+HANDLE vsiCreateFileW(LPCWSTR lpFileName,
+                     DWORD dwDesiredAccess,
+                     DWORD dwShareMode,
+                     DWORD dwCreationDisposition, int *errorCode)
 {
   #ifdef _WIN32
     
     HANDLE hFile = CreateFileW(
-      filePath,
-      accessMode,
-      shareMode,
+      lpFileName,
+      dwDesiredAccess,
+      dwShareMode,
       NULL,
-      creationMode,
+      dwCreationDisposition,
       FILE_ATTRIBUTE_NORMAL,
       0
     );
     if (hFile == INVALID_HANDLE_VALUE)
     {
-      *errorCode = GetLastError();
+      if (errorCode != nullptr) 
+      {
+        *errorCode = GetLastError();
+      }
       return INVALID_HANDLE_VALUE;
     }
     return hFile;
   #else
 
-    int fd = open(filePath, accessMode | creationMode, 0644);
+    int fd = open(lpFileName, dwDesiredAccess | dwCreationDisposition, 0644);
     if (fd < 0) 
     {
       if (errorCode != nullptr) 
@@ -40,19 +43,19 @@ HANDLE vsi_create_file_w(LPCWSTR filePath,
   #endif
 }
 
-HANDLE vsi_create_file_a(LPCSTR filePath,
-                     DWORD accessMode,
-                     DWORD shareMode,
-                     DWORD creationMode, int *errorCode)
+HANDLE vsiCreateFileA(LPCSTR lpFileName,
+                     DWORD dwDesiredAccess,
+                     DWORD dwShareMode,
+                     DWORD dwCreationDisposition, int *errorCode)
 {
 #ifdef _WIN32
   
   HANDLE hFile = CreateFileA(
-    filePath,
-    accessMode,
-    shareMode,
+    lpFileName,
+    dwDesiredAccess,
+    dwShareMode,
     NULL,
-    creationMode,
+    dwCreationDisposition,
     FILE_ATTRIBUTE_NORMAL,
     0
   );
@@ -71,9 +74,9 @@ HANDLE vsi_create_file_a(LPCSTR filePath,
 #else
   int flags = 0;
 
-  int fd = open(filePath, accessMode | creationMode, 0644);
+  int fd = open(lpFileName, dwDesiredAccess | dwCreationDisposition, 0644);
 
-  if (shareMode != 0 && flock(fd, shareMode) == -1) 
+  if (dwShareMode != 0 && flock(fd, dwShareMode) == -1) 
   {
     if (errorCode != nullptr) 
     {
@@ -88,7 +91,7 @@ HANDLE vsi_create_file_a(LPCSTR filePath,
 #endif
 }
 
-BOOL vsi_read_file(HANDLE &hFile, LPVOID buffer, DWORD numberOfBytesToRead, PLONG totalBytesRead, int *errorCode
+BOOL vsiReadFile(HANDLE &hFile, LPVOID buffer, DWORD numberOfBytesToRead, PLONG totalBytesRead, int *errorCode
  )
 {
   #ifdef _WIN32
@@ -125,7 +128,7 @@ BOOL vsi_read_file(HANDLE &hFile, LPVOID buffer, DWORD numberOfBytesToRead, PLON
     return true;
 }
 
-BOOL vsi_write_file(HANDLE &hFile, LPCVOID buffer, DWORD numberOfBytesToWrite, PLONG totalBytesWritten, int *errorCode)
+BOOL vsiWriteFile(HANDLE &hFile, LPCVOID buffer, DWORD numberOfBytesToWrite, PLONG totalBytesWritten, int *errorCode)
 {
   #ifdef _WIN32
     DWORD bytesWritten = 0;
@@ -159,7 +162,7 @@ BOOL vsi_write_file(HANDLE &hFile, LPCVOID buffer, DWORD numberOfBytesToWrite, P
   return true;
 }
 
-void vsi_close_file(HANDLE &hFile)
+void vsiCloseFile(HANDLE &hFile)
 {
   #ifdef _WIN32
     CloseHandle(hFile);
@@ -206,39 +209,39 @@ BOOL vsi_seek_file(HANDLE &hFile, LONG lOffset, DWORD origin, int *errorCode)
   return true;
 }
 
-BOOL vsi_copy_file(LPCSTR sourceFilePath,
+BOOL vsi_copy_file(LPCSTR sourcelpFileName,
                   LPCSTR destinationPath,
                   int *errorCode)
 {
   #ifdef _WIN32
-  HANDLE hSourceFile = vsi_create_file_a(sourceFilePath, GENERIC_READ, FILE_SHARE_READ, OPEN_EXISTING,
+  HANDLE hSourceFile = vsiCreateFileA(sourcelpFileName, GENERIC_READ, FILE_SHARE_READ, OPEN_EXISTING,
                                         errorCode);
   if (hSourceFile == INVALID_HANDLE_VALUE) 
   {
     return false;
   }
 
-  HANDLE hDestinationFile = vsi_create_file_a(destinationPath, GENERIC_WRITE, 0, CREATE_ALWAYS,
+  HANDLE hDestinationFile = vsiCreateFileA(destinationPath, GENERIC_WRITE, 0, CREATE_ALWAYS,
                                              errorCode);
   if (hDestinationFile == INVALID_HANDLE_VALUE)
   {
-    vsi_close_file(hSourceFile);
+    vsiCloseFile(hSourceFile);
     return false;
   }
 
-  char *buffer = new char[BUFFER_SIZE];
+  char *buffer = new char[ONE_KB];
   PLONG totalBytesRead = new long(0);
   PLONG totalBytesWritten = new long(0);
 
-  while (vsi_read_file(hSourceFile, buffer, BUFFER_SIZE, totalBytesRead, errorCode))
+  while (vsiReadFile(hSourceFile, buffer, ONE_KB, totalBytesRead, errorCode))
   {
-    if (!vsi_write_file(hDestinationFile, buffer, *totalBytesRead, totalBytesWritten, errorCode)) 
+    if (!vsiWriteFile(hDestinationFile, buffer, *totalBytesRead, totalBytesWritten, errorCode)) 
     {
       delete[] buffer;
       delete totalBytesRead;
       delete totalBytesWritten;
-      vsi_close_file(hSourceFile);
-      vsi_close_file(hDestinationFile);
+      vsiCloseFile(hSourceFile);
+      vsiCloseFile(hDestinationFile);
       return false;
     }
 
@@ -247,19 +250,19 @@ BOOL vsi_copy_file(LPCSTR sourceFilePath,
       delete[] buffer;
       delete totalBytesRead;
       delete totalBytesWritten;
-      vsi_close_file(hSourceFile);
-      vsi_close_file(hDestinationFile);
+      vsiCloseFile(hSourceFile);
+      vsiCloseFile(hDestinationFile);
       return false;
     }
   }
   delete[] buffer;
   delete totalBytesRead;
   delete totalBytesWritten;
-  vsi_close_file(hSourceFile);
-  vsi_close_file(hDestinationFile);
+  vsiCloseFile(hSourceFile);
+  vsiCloseFile(hDestinationFile);
 
   #elif defined(__linux__)
-  int sourcFd = open(sourceFilePath, O_RDONLY);
+  int sourcFd = open(sourcelpFileName, O_RDONLY);
   if (sourcFd < 0) 
   {
     return false;
@@ -267,7 +270,7 @@ BOOL vsi_copy_file(LPCSTR sourceFilePath,
   int destFd = open(destinationPath, O_WRONLY | O_CREAT | O_TRUNC, 0644);
   if (destFd < 0) 
   {
-    close(sourcFd);
+    vsiCloseFile(sourcFd);
     return false;
   }
 
@@ -283,8 +286,8 @@ BOOL vsi_copy_file(LPCSTR sourceFilePath,
         *errorCode = errno;
       }
       delete[] buffer;
-      close(sourcFd);
-      close(destFd);
+      vsiCloseFile(sourcFd);
+      vsiCloseFile(destFd);
       return false;
     }
     if (bytesWritten != bytesRead) 
@@ -294,32 +297,32 @@ BOOL vsi_copy_file(LPCSTR sourceFilePath,
         *errorCode = errno;
       }
       delete[] buffer;
-      close(sourcFd);
-      close(destFd);
+      vsiCloseFile(sourcFd);
+      vsiCloseFile(destFd);
       return false;
     }
   }
 
   delete [] buffer;
-  vsi_close_file(sourcFd);
-  vsi_close_file(destFd);
+  vsiCloseFile(sourcFd);
+  vsiCloseFile(destFd);
   #endif
   return true;
 }
 
 
-BOOL vsi_rename_file(LPCSTR oldFilePath,
-                   LPCSTR newName,
+BOOL vsiRenameFile(LPCSTR oldlpFileName,
+                   LPCSTR newlpName,
                    int *errorCode)
 {
   #ifdef _WIN32
-    if (MoveFileA(oldFilePath, newName) == 0) 
+    if (MoveFileA(oldlpFileName, newlpName) == 0) 
     {
       *errorCode = GetLastError();
       return false;
     }
   #elif defined(__linux__)
-    if (rename(oldFilePath, newName) != 0) 
+    if (rename(oldlpFileName, newName) != 0) 
     {
       *errorCode = errno;
       return false;
@@ -328,10 +331,10 @@ BOOL vsi_rename_file(LPCSTR oldFilePath,
   return true;
 }
 
-BOOL vsi_delete_file(LPCSTR filePath, int *errorCode)
+BOOL vsiDeleteFile(LPCSTR lpFileName, int *errorCode)
 {
   #ifdef _WIN32
-    if (DeleteFileA(filePath) == 0)
+    if (DeleteFileA(lpFileName) == 0)
     {
       if (errorCode != nullptr)
       {
@@ -340,7 +343,7 @@ BOOL vsi_delete_file(LPCSTR filePath, int *errorCode)
       return false;
     }
   #elif defined(__linux__)
-    if (unlink(filePath) != 0)
+    if (unlink(lpFileName) != 0)
     {
       *errorCode = errno;
       return false;
