@@ -6,7 +6,7 @@
 HANDLE vsiCreateFileW(LPCWSTR lpFileName,
                      DWORD dwDesiredAccess,
                      DWORD dwShareMode,
-                     DWORD dwCreationDisposition, int *errorCode)
+                     DWORD dwCreationDisposition, PINT  ipCodeError)
 {
   #ifdef _WIN32
     
@@ -21,21 +21,34 @@ HANDLE vsiCreateFileW(LPCWSTR lpFileName,
     );
     if (hFile == INVALID_HANDLE_VALUE)
     {
-      if (errorCode != nullptr) 
+      if (ipCodeError != nullptr) 
       {
-        *errorCode = GetLastError();
+        *ipCodeError = GetLastError();
       }
       return INVALID_HANDLE_VALUE;
     }
     return hFile;
   #else
+    const wchar_t* widePath = lpFileName;
+    char utf8Path[1024];
 
-    int fd = open(lpFileName, dwDesiredAccess | dwCreationDisposition, 0644);
+    setlocale(LC_ALL, "");
+    size_t res = wcstombs(utf8Path, widePath, sizeof(utf8Path));
+    if (res == (size_t)-1) 
+    {
+      if (ipCodeError != nullptr) 
+      {
+        *ipCodeError = errno;
+      }
+      return false;
+    }
+
+    int fd = open(utf8Path, dwDesiredAccess | dwCreationDisposition, 0644);
     if (fd < 0) 
     {
-      if (errorCode != nullptr) 
+      if (ipCodeError != nullptr) 
       {
-        *errorCode = errno;
+        *ipCodeError = errno;
       }
       return INVALID_HANDLE_VALUE;
     }
@@ -46,7 +59,7 @@ HANDLE vsiCreateFileW(LPCWSTR lpFileName,
 HANDLE vsiCreateFileA(LPCSTR lpFileName,
                      DWORD dwDesiredAccess,
                      DWORD dwShareMode,
-                     DWORD dwCreationDisposition, int *errorCode)
+                     DWORD dwCreationDisposition, PINT  ipCodeError)
 {
 #ifdef _WIN32
   
@@ -62,9 +75,9 @@ HANDLE vsiCreateFileA(LPCSTR lpFileName,
 
   if (hFile == INVALID_HANDLE_VALUE)
   {
-    if (errorCode != nullptr) 
+    if (ipCodeError != nullptr) 
     {
-      *errorCode = GetLastError();
+      *ipCodeError = GetLastError();
     }
     return INVALID_HANDLE_VALUE;
   }
@@ -78,9 +91,9 @@ HANDLE vsiCreateFileA(LPCSTR lpFileName,
 
   if (dwShareMode != 0 && flock(fd, dwShareMode) == -1) 
   {
-    if (errorCode != nullptr) 
+    if (ipCodeError != nullptr) 
     {
-      *errorCode = errno;
+      *ipCodeError = errno;
     }
     close(fd);
     return INVALID_HANDLE_VALUE;
@@ -91,7 +104,7 @@ HANDLE vsiCreateFileA(LPCSTR lpFileName,
 #endif
 }
 
-BOOL vsiReadFile(HANDLE &hFile, LPVOID buffer, DWORD numberOfBytesToRead, PLONG totalBytesRead, int *errorCode
+BOOL vsiReadFile(HANDLE &hFile, LPVOID buffer, DWORD numberOfBytesToRead, PLONG totalBytesRead, PINT  ipCodeError
  )
 {
   #ifdef _WIN32
@@ -99,9 +112,9 @@ BOOL vsiReadFile(HANDLE &hFile, LPVOID buffer, DWORD numberOfBytesToRead, PLONG 
     BOOL result = ReadFile(hFile, buffer, numberOfBytesToRead, &bytesRead, NULL);
     if (result == false) 
     {
-      if (errorCode != nullptr) 
+      if (ipCodeError != nullptr) 
       {
-        *errorCode = GetLastError();
+        *ipCodeError = GetLastError();
       }
       return false;
     }
@@ -114,9 +127,9 @@ BOOL vsiReadFile(HANDLE &hFile, LPVOID buffer, DWORD numberOfBytesToRead, PLONG 
     size_t bytesRead = read(hFile, buffer, numberOfBytesToRead);
     if (bytesRead < 0)
     {
-      if (errorCode != nullptr) 
+      if (ipCodeError != nullptr) 
       {
-        *errorCode = errno;
+        *ipCodeError = errno;
       }
       return false;
     }
@@ -128,7 +141,7 @@ BOOL vsiReadFile(HANDLE &hFile, LPVOID buffer, DWORD numberOfBytesToRead, PLONG 
     return true;
 }
 
-BOOL vsiWriteFile(HANDLE &hFile, LPCVOID buffer, DWORD numberOfBytesToWrite, PLONG totalBytesWritten, int *errorCode)
+BOOL vsiWriteFile(HANDLE &hFile, LPCVOID buffer, DWORD numberOfBytesToWrite, PLONG totalBytesWritten, PINT  ipCodeError)
 {
   #ifdef _WIN32
     DWORD bytesWritten = 0;
@@ -136,9 +149,9 @@ BOOL vsiWriteFile(HANDLE &hFile, LPCVOID buffer, DWORD numberOfBytesToWrite, PLO
     
     if (result == false)
     {
-      if (errorCode != nullptr) 
+      if (ipCodeError != nullptr) 
       {
-        *errorCode = GetLastError();
+        *ipCodeError = GetLastError();
       }
       return false;
     }
@@ -152,9 +165,9 @@ BOOL vsiWriteFile(HANDLE &hFile, LPCVOID buffer, DWORD numberOfBytesToWrite, PLO
     size_t bytesWritten = write(hFile, buffer, numberOfBytesToWrite);
     if (bytesWritten < 0)
     {
-      if (errorCode != nullptr) 
+      if (ipCodeError != nullptr) 
       {
-        *errorCode = errno;
+        *ipCodeError = errno;
       }
       return false;
     }
@@ -171,7 +184,7 @@ void vsiCloseFile(HANDLE &hFile)
   #endif
 }
 
-BOOL vsi_seek_file(HANDLE &hFile, LONG lOffset, DWORD origin, int *errorCode)
+BOOL vsi_seek_file(HANDLE &hFile, LONG lOffset, DWORD origin, PINT  ipCodeError)
 {
   #ifdef _WIN32
     LARGE_INTEGER liDistanceToMove;
@@ -186,9 +199,9 @@ BOOL vsi_seek_file(HANDLE &hFile, LONG lOffset, DWORD origin, int *errorCode)
 
     if (result == false)
     {
-      if (errorCode != nullptr) 
+      if (ipCodeError != nullptr) 
       {
-        *errorCode = GetLastError();
+        *ipCodeError = GetLastError();
       }
       return false;
     }
@@ -198,9 +211,9 @@ BOOL vsi_seek_file(HANDLE &hFile, LONG lOffset, DWORD origin, int *errorCode)
     off_t newPosition = lseek(hFile, lOffset, origin);
     if (newPosition == -1) 
     {
-      if (errorCode != nullptr) 
+      if (ipCodeError != nullptr) 
       {
-        *errorCode = errno;
+        *ipCodeError = errno;
       }
       return false;
     }
@@ -211,18 +224,18 @@ BOOL vsi_seek_file(HANDLE &hFile, LONG lOffset, DWORD origin, int *errorCode)
 
 BOOL vsi_copy_file(LPCSTR sourcelpFileName,
                   LPCSTR destinationPath,
-                  int *errorCode)
+                  PINT  ipCodeError)
 {
   #ifdef _WIN32
   HANDLE hSourceFile = vsiCreateFileA(sourcelpFileName, GENERIC_READ, FILE_SHARE_READ, OPEN_EXISTING,
-                                        errorCode);
+                                        ipCodeError);
   if (hSourceFile == INVALID_HANDLE_VALUE) 
   {
     return false;
   }
 
   HANDLE hDestinationFile = vsiCreateFileA(destinationPath, GENERIC_WRITE, 0, CREATE_ALWAYS,
-                                             errorCode);
+                                             ipCodeError);
   if (hDestinationFile == INVALID_HANDLE_VALUE)
   {
     vsiCloseFile(hSourceFile);
@@ -233,9 +246,9 @@ BOOL vsi_copy_file(LPCSTR sourcelpFileName,
   PLONG totalBytesRead = new long(0);
   PLONG totalBytesWritten = new long(0);
 
-  while (vsiReadFile(hSourceFile, buffer, ONE_KB, totalBytesRead, errorCode))
+  while (vsiReadFile(hSourceFile, buffer, ONE_KB, totalBytesRead, ipCodeError))
   {
-    if (!vsiWriteFile(hDestinationFile, buffer, *totalBytesRead, totalBytesWritten, errorCode)) 
+    if (!vsiWriteFile(hDestinationFile, buffer, *totalBytesRead, totalBytesWritten, ipCodeError)) 
     {
       delete[] buffer;
       delete totalBytesRead;
@@ -274,16 +287,16 @@ BOOL vsi_copy_file(LPCSTR sourcelpFileName,
     return false;
   }
 
-  char *buffer = new char[BUFFER_SIZE];
+  char *buffer = new char[ONE_KB];
   ssize_t bytesRead;
-  while ((bytesRead = read(sourcFd, buffer, BUFFER_SIZE)) > 0)
+  while ((bytesRead = read(sourcFd, buffer, ONE_KB)) > 0)
   {
     ssize_t bytesWritten = write(destFd, buffer, bytesRead);
     if (bytesWritten < 0) 
     {
-      if (errorCode != nullptr) 
+      if (ipCodeError != nullptr) 
       {
-        *errorCode = errno;
+        *ipCodeError = errno;
       }
       delete[] buffer;
       vsiCloseFile(sourcFd);
@@ -292,9 +305,9 @@ BOOL vsi_copy_file(LPCSTR sourcelpFileName,
     }
     if (bytesWritten != bytesRead) 
     {
-      if (errorCode != nullptr) 
+      if (ipCodeError != nullptr) 
       {
-        *errorCode = errno;
+        *ipCodeError = errno;
       }
       delete[] buffer;
       vsiCloseFile(sourcFd);
@@ -311,41 +324,121 @@ BOOL vsi_copy_file(LPCSTR sourcelpFileName,
 }
 
 
-BOOL vsiRenameFile(LPCSTR oldlpFileName,
+BOOL vsiRenameFileA(LPCSTR oldlpFileName,
                    LPCSTR newlpName,
-                   int *errorCode)
+                   PINT  ipCodeError)
 {
   #ifdef _WIN32
     if (MoveFileA(oldlpFileName, newlpName) == 0) 
     {
-      *errorCode = GetLastError();
+      *ipCodeError = GetLastError();
       return false;
     }
   #elif defined(__linux__)
-    if (rename(oldlpFileName, newName) != 0) 
+    if (rename(oldlpFileName, newlpName) != 0) 
     {
-      *errorCode = errno;
+      *ipCodeError = errno;
       return false;
     }
   #endif
   return true;
 }
 
-BOOL vsiDeleteFile(LPCSTR lpFileName, int *errorCode)
+BOOL vsiRenameFileW(LPCWSTR oldlpFileName,
+                   LPCWSTR newlpName,
+                   PINT  ipCodeError)
+{
+  #ifdef _WIN32
+    if (MoveFileW(oldlpFileName, newlpName) == 0) 
+    {
+      *ipCodeError = GetLastError();
+      return false;
+    }
+  #elif defined(__linux__)
+    const wchar_t* widePath = oldlpFileName;
+    char utf8Path[1024];
+
+    setlocale(LC_ALL, "");
+    size_t res = wcstombs(utf8Path, widePath, sizeof(utf8Path));
+    if (res == (size_t)-1) 
+    {
+      if (ipCodeError != nullptr) 
+      {
+        *ipCodeError = errno;
+      }
+      return false;
+    }
+    const char* oldlpFileNameutf8 = utf8Path;
+
+    res = wcstombs(utf8Path, (const wchar_t *)newlpName, sizeof(utf8Path));
+    if (res == (size_t)-1) 
+    {
+      if (ipCodeError != nullptr) 
+      {
+        *ipCodeError = errno;
+      }
+      return false;
+    }    
+    const char* newlpNameutf8 = utf8Path;
+    if (rename(oldlpFileNameutf8, newlpNameutf8) != 0) 
+    {
+      *ipCodeError = errno;
+      return false;
+    }
+  #endif
+  return true;
+}
+
+BOOL vsiDeleteFileA(LPCSTR lpFileName, PINT  ipCodeError)
 {
   #ifdef _WIN32
     if (DeleteFileA(lpFileName) == 0)
     {
-      if (errorCode != nullptr)
+      if (ipCodeError != nullptr)
       {
-        *errorCode = GetLastError();
+        *ipCodeError = GetLastError();
       }
       return false;
     }
   #elif defined(__linux__)
     if (unlink(lpFileName) != 0)
     {
-      *errorCode = errno;
+      *ipCodeError = errno;
+      return false;
+    }
+  #endif
+  return true;
+}
+
+BOOL vsiDeleteFileW(LPCWSTR lpFileName, PINT  ipCodeError)
+{
+  #ifdef _WIN32
+    if (DeleteFileW(lpFileName) == 0)
+    {
+      if (ipCodeError != nullptr)
+      {
+        *ipCodeError = GetLastError();
+      }
+      return false;
+    }
+  #elif defined(__linux__)
+    const wchar_t* widePath = lpFileName;
+    char utf8Path[1024];
+
+    setlocale(LC_ALL, "");
+    size_t res = wcstombs(utf8Path, widePath, sizeof(utf8Path));
+    if (res == (size_t)-1) 
+    {
+      if (ipCodeError != nullptr) 
+      {
+        *ipCodeError = errno;
+      }
+      return false;
+    }
+
+    if (unlink(utf8Path) != 0)
+    {
+      *ipCodeError = errno;
       return false;
     }
   #endif

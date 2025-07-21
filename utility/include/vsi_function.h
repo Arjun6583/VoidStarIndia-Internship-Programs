@@ -118,10 +118,6 @@
     #define LPWORD    WORD*
   #endif  
 
-  #ifndef LPCWSTR
-    #define LPCWSTR  const char*
-  #endif
-
   #ifndef ULONG_PTR
     #define ULONG_PTR unsigned long
   #endif
@@ -130,44 +126,64 @@
     #define VOID void
   #endif
 
+  #ifndef LPCWSTR
+    #define LPCWSTR const wchar_t*
+  #endif
+
+  #ifndef INT
+    #define INT int
+  #endif
+
+  #ifndef PINT
+    #define PINT int*
+  #endif
+
 #endif
+
 
 HANDLE vsiCreateFileW(LPCWSTR lpFileName,
                      DWORD dwDesiredAccess,
                      DWORD dwShareMode,
                      DWORD dwCreationDisposition, 
-                     int *errorCode = nullptr);
+                     PINT piErrorCode = nullptr);
 
 HANDLE vsiCreateFileA(LPCSTR lpFileName,
                      DWORD dwDesiredAccess,
                      DWORD dwShareMode,
                      DWORD dwCreationDisposition, 
-                     int *errorCode = nullptr);
+                     PINT ipErrorCode = nullptr);
 
 BOOL vsiWriteFile(HANDLE &file, 
                     LPCVOID buffer, 
                     DWORD numberOfBytesTOWrite, 
                     PLONG totalBytesWritten, 
-                    int *errorCode = nullptr);
+                    PINT ipErrorCode = nullptr);
 
 BOOL vsiReadFile(HANDLE &hFile, 
                   LPVOID buffer, 
                   DWORD numberOfBytesToRead, 
                   PLONG totalBytesRead, 
-                  int *errorCode = nullptr);
+                  PINT ipErrorCode = nullptr);
 
-void vsiCloseFile(HANDLE &hFile);
+VOID vsiCloseFile(HANDLE &hFile);
 
 BOOL vsiSeekFile(HANDLE &hFile, 
                   LONG lOffset, 
-                  DWORD origin, int *errorCode = nullptr);
+                  DWORD origin, PINT piErrorCode = nullptr);
 
 BOOL vsiCopyFile(LPCSTR sourcelpFileName, 
                   LPCSTR destinationlpFileName, 
-                  int *errorCode = nullptr);
+                  PINT piErrorCode = nullptr);
 
-BOOL vsiRenameFile(LPCSTR oldlpFileName, 
+BOOL vsiRenameFileA(LPCSTR oldlpFileName, 
                   LPCSTR newlpName, 
-                  int *errorCode = nullptr);
+                  PINT ipErrorCode = nullptr);
 
-BOOL vsiDeleteFile(LPCSTR lpFileName, int *errorCode = nullptr);
+BOOL vsiRenameFileW(LPCWSTR oldlpFileName,
+                   LPCWSTR newlpName,
+                   PINT ipErrorCode = nullptr);
+
+BOOL vsiDeleteFileA(LPCSTR lpFileName, PINT ipErrorCode = nullptr);
+
+BOOL vsiDeleteFileW(LPCWSTR lpFileName, PINT ipErrorCode = nullptr);
+

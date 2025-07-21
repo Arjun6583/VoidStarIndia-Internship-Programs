@@ -3,8 +3,8 @@
 #define ONE_KB 1024
 
 bool readWriteFileOperation()
-{
-    int errorCode = 0;
+{ 
+    INT errorCode = 0;
     /*
         Reding and writing file operation
     */
@@ -19,16 +19,16 @@ bool readWriteFileOperation()
 
     HANDLE writeHandle = vsiCreateFileA("/media/sf_Internship_Program/data/destination.txt", GENERIC_WRITE, FILE_SHARE_WRITE, CREATE_ALWAYS, &errorCode);
 
-    char *buffer = new char[ONE_KB];
+    char *pchBuffer = new char[ONE_KB];
     PLONG totalBytesRead = new long(0);
     PLONG totalBytesWritten = new long(0);
 
-    while(vsiReadFile(fileHandle, buffer, ONE_KB, totalBytesRead, &errorCode))
+    while(vsiReadFile(fileHandle, pchBuffer, ONE_KB, totalBytesRead, &errorCode))
     {
-        if (!vsiWriteFile(writeHandle, buffer, *totalBytesRead, totalBytesWritten, &errorCode))
+        if (!vsiWriteFile(writeHandle, pchBuffer, *totalBytesRead, totalBytesWritten, &errorCode))
         {
             printf("Error writing to file: %d\n", errorCode);
-            delete[] buffer;
+            delete[] pchBuffer;
             delete totalBytesRead;
             delete totalBytesWritten;
             vsiCloseFile(fileHandle);
@@ -38,7 +38,7 @@ bool readWriteFileOperation()
         if (*totalBytesWritten != *totalBytesRead)
         {
             printf("Error: Bytes written do not match bytes read.\n");
-            delete[] buffer;
+            delete[] pchBuffer;
             delete totalBytesRead;
             delete totalBytesWritten;
             vsiCloseFile(fileHandle);
@@ -49,6 +49,64 @@ bool readWriteFileOperation()
     return true;
 }
 
+bool renameFileOperation()
+{
+    int errorCode = 0;
+    BOOL result;
+    result = vsiRenameFileA("/media/sf_Internship_Program/data/copy_source.txt", "/media/sf_Internship_Program/data/renamed_copy.txt", &errorCode);
+    if (result == false)
+    {
+        printf("Error renaming file: %d\n", errorCode);
+        return false;
+    }
+
+    LPCWSTR fileName = L"माझीफाईल.txt";
+    int errorNo = 0;
+    HANDLE fileHandle = vsiCreateFileW(fileName, GENERIC_READ, FILE_SHARE_READ, OPEN_ALWAYS, &errorNo);
+    if (fileHandle == INVALID_HANDLE_VALUE)
+    {
+        printf("Error opening file: %d\n", errorNo);
+        return false;
+    }
+    printf("File opened successfully.\n");
+    vsiCloseFile(fileHandle);
+
+    result = vsiRenameFileW(fileName, L"माझीफाईल_नवीन.txt", &errorNo);
+    if (result == false)
+    {
+        printf("Error renaming file: %d\n", errorNo);
+        vsiCloseFile(fileHandle);
+        return false;
+    }
+    printf("File renamed successfully.\n");
+    return true;
+}
+
+bool deleteFileOperation()
+{
+    int errorCode = 0;
+    BOOL result;
+    result = vsiDeleteFileA("/media/sf_Internship_Program/data/renamed_copy.txt", &errorCode);
+    if (result == false)
+    {
+        printf("Error deleting file: %d\n", errorCode);
+        return false;
+    }
+    printf("File deleted successfully.\n");
+
+
+    LPCWSTR fileName = L"माझीफाईल_नवीन.txt";
+    int errorNo = 0;
+    result = vsiDeleteFileW(fileName, &errorNo);
+    if (result == false)
+    {
+        printf("Error deleting file: %d\n", errorNo);
+        return false;
+    }
+    printf("File deleted successfully.\n");
+    return true;
+}
+
 int main()
 {
     int errorCode = 0;
@@ -56,13 +114,10 @@ int main()
     if (!result)
     {
         printf("Error in read/write file operation.\n");
-        return -1;
+        return false;
     }
     printf("Read/Write file operation completed successfully.\n");
 
-    /*
-        Copy file operation
-    */
     BOOL result = vsiCopyFile( "/media/sf_Internship_Program/data/source.txt", "/media/sf_Internship_Program/data/copy_source.txt", &errorCode);
     if (result == false)
     {
@@ -71,27 +126,23 @@ int main()
     }
     printf("File copied successfully.\n");
 
-    /*
-        Rename file operation
-    */
-    result = vsiRenameFile("/media/sf_Internship_Program/data/copy_source.txt", "/media/sf_Internship_Program/data/renamed_copy.txt", &errorCode);
-    if (result == false)
+    result = renameFileOperation();
+    if (!result)
     {
-        printf("Error renaming file: %d\n", errorCode);
+        printf("Error in rename file operation.\n");
         return -1;
     }
-    printf("File renamed successfully.\n");
 
-    /*
-        Delete file operation
-    */
-    result = vsiDeleteFile("/media/sf_Internship_Program/data/renamed_copy.txt", &errorCode);
-    if (result == false)
+    printf("Rename file operation completed successfully.\n");
+
+    result = deleteFileOperation();
+    if (!result)
     {
-        printf("Error deleting file: %d\n", errorCode);
+        printf("Error in delete file operation.\n");
         return -1;
     }
-    printf("File deleted successfully.\n");
 
+    printf("Delete file operation completed successfully.\n");
+    
     return 1;
 }
