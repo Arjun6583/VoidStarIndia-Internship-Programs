@@ -184,7 +184,7 @@ void vsiCloseFile(HANDLE &hFile)
   #endif
 }
 
-BOOL vsi_seek_file(HANDLE &hFile, LONG lOffset, DWORD origin, PINT  ipCodeError)
+BOOL vsiSeekFile(HANDLE &hFile, LONG lOffset, DWORD origin, PINT  ipCodeError)
 {
   #ifdef _WIN32
     LARGE_INTEGER liDistanceToMove;

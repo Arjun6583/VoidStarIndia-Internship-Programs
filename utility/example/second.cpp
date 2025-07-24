@@ -3,6 +3,7 @@
 #include <pthread.h>
 #include <utility>
 #include <string>
+#include "vsi_function.h"
 
 #define TEN_MB (10 * 1024 * 1024) 
 #define TOTAL_THREADS 10
@@ -22,13 +23,14 @@ typedef struct fileDataNode
 
 typedef struct fileArgument
 {
-  FILE *file_reader_pointer;
+  // FILE *file_reader_pointer;
+  HANDLE hFile;
   int i_index;
   fileDataNode **head;
   fileDataNode **tail;
 
-  fileArgument(FILE *file_ptr, int index, fileDataNode **head_ptr, fileDataNode **tail_ptr) : 
-    file_reader_pointer(file_ptr), i_index(index), head(head_ptr), tail(tail_ptr)  {}
+  fileArgument(HANDLE hFile, int index, fileDataNode **head_ptr, fileDataNode **tail_ptr) : 
+    hFile(hFile), i_index(index), head(head_ptr), tail(tail_ptr)  {}
 
 } ReadArgs;
 
@@ -77,23 +79,26 @@ void* write_file(void *args)
 
   delete file_arg;
 
-  FILE *file_write_pointer = fopen(str_file_name.c_str(), "w");
-  if(file_write_pointer == NULL) 
+  // FILE *file_write_pointer = fopen(str_file_name.c_str(), "w");
+  HANDLE hFile = vsiCreateFileA(str_file_name.c_str(), GENERIC_WRITE, FILE_SHARE_WRITE, CREATE_ALWAYS, nullptr);
+  if(hFile == INVALID_HANDLE_VALUE) 
   {
     cerr << "Error opening file for writing: " << str_file_name << endl;
     return nullptr;
   }
   cout << "\nWriting file in thread: " << (unsigned long)current_thread_id << ", File Name: " << str_file_name << endl;
   
-  size_t bytesWritten = fwrite(str_file_data.c_str(), sizeof(char), str_file_data.size(), file_write_pointer);
+  //size_t bytesWritten = fwrite(str_file_data.c_str(), sizeof(char), str_file_data.size(), file_write_pointer);
+  long bytesWritten = 0;
+  BOOL res = vsiWriteFile(hFile, str_file_data.c_str(), str_file_data.size(), &bytesWritten, nullptr);
   if(bytesWritten != str_file_data.size()) 
   {
     cerr << "Error writing to file: " << str_file_name << endl;
-    fclose(file_write_pointer);
+    vsiCloseFile(hFile);
     return nullptr;
   }
 
-  fclose(file_write_pointer); 
+  vsiCloseFile(hFile); 
   return nullptr;
 }
 
@@ -170,22 +175,25 @@ bool copy_data_list_to_file(FileNode *head)
   {
     std::string file_name = "split_part_" + to_string(current->i_fileIndex) + ".txt";
 
-    FILE *file_write_pointer = fopen(file_name.c_str(), "w");
-    if (file_write_pointer == NULL)
+    // FILE *file_write_pointer = fopen(file_name.c_str(), "w");
+    HANDLE hFile = vsiCreateFileA(file_name.c_str(), GENERIC_WRITE, FILE_SHARE_WRITE, CREATE_ALWAYS, nullptr);
+    if (hFile == INVALID_HANDLE_VALUE)
     {
       cerr << "Error opening file for writing: " << file_name << endl;
       return false;
     }
 
-    size_t write_bytes = fwrite(current->str_file_data.c_str(), sizeof(char), current->str_file_data.size(), file_write_pointer);
+    // size_t write_bytes = fwrite(current->str_file_data.c_str(), sizeof(char), current->str_file_data.size(), file_write_pointer);
+    long write_bytes = 0;
+    BOOL res = vsiWriteFile(hFile, current->str_file_data.c_str(), current->str_file_data.size() ,&write_bytes, nullptr);
     if (write_bytes != current->str_file_data.size())
     {
       cerr << "Error writing to file: " << file_name << endl;
-      fclose(file_write_pointer);
+      vsiCloseFile(hFile);
       return false;
     }
     
-    fclose(file_write_pointer);
+    vsiCloseFile(hFile);
     current = current->next;
   }
   return true;
@@ -197,22 +205,25 @@ void* read_file(void *args)
 
   ReadArgs *arg = (ReadArgs *)args;
   pthread_t current_thread_id = pthread_self();
-  FILE *file_read_pointer = arg->file_reader_pointer;
+  HANDLE hFile = arg->hFile;
   FileNode **head = arg->head;
   FileNode **tail = arg->tail;
   char *pch_buffer = new char[TEN_MB + 1];
   int thread_index = arg->i_index;
   cout << "\nReading file in thread: " << (unsigned long)current_thread_id << endl;
 
-  if(file_read_pointer == NULL) 
+  if(hFile == INVALID_HANDLE_VALUE) 
   {
     cerr << "Error opening file: " << endl;
     return nullptr;
   }
 
   pthread_mutex_lock(&g_file_mutex);
-  fseek(file_read_pointer, thread_index * TEN_MB, SEEK_SET);
-  size_t bytesRead = fread(pch_buffer, sizeof(char), TEN_MB, file_read_pointer);
+  // fseek(file_read_pointer, thread_index * TEN_MB, SEEK_SET);
+  vsiSeekFile(hFile, thread_index * TEN_MB, FILE_BEGIN,nullptr);
+  // size_t bytesRead = fread(pch_buffer, sizeof(char), TEN_MB, file_read_pointer);
+  long bytesRead = 0;
+  vsiReadFile(hFile, pch_buffer, TEN_MB, &bytesRead, nullptr);
   if(bytesRead == 0) 
   {
     cerr << "Error reading file: " << endl;
@@ -229,14 +240,14 @@ void* read_file(void *args)
   return nullptr;
 }
 
-bool split_file(FILE *file_read_pointer, FileNode **head, FileNode **tail)
+bool split_file(HANDLE hFile, FileNode **head, FileNode **tail)
 {
 
   pthread_t threads[TOTAL_THREADS];
   
   for (int i_thread_count = 0; i_thread_count < TOTAL_THREADS; ++i_thread_count) 
   {
-    ReadArgs *file_arg = new ReadArgs(file_read_pointer, i_thread_count, head, tail);
+    ReadArgs *file_arg = new ReadArgs(hFile, i_thread_count, head, tail);
 
     int i_thread_create_status = pthread_create(&threads[i_thread_count], 
     nullptr, 
@@ -284,25 +295,27 @@ int main(int argc, char *argv[])
     return EXIT_FAILURE;
   }
 
-  std::string strFileName = argv[1];
+  //std::string strFileName = argv[1];
+  std::string strFileName = "E:\\arjun\\Programming\\C ++\\Practice\\Internship Program\\data\\demo.txt";
   FileNode *head = nullptr, *tail = nullptr;
 
-  FILE *file_read_pointer = get_file_pointer(strFileName);
-  if (file_read_pointer == nullptr)
+  //FILE *file_read_pointer = get_file_pointer(strFileName);
+  HANDLE hFile = vsiCreateFileA(strFileName.c_str(), GENERIC_READ, FILE_SHARE_READ, OPEN_EXISTING, nullptr);
+  if (hFile == INVALID_HANDLE_VALUE)
   {
     cerr << "Failed to initialize file: " << strFileName << endl;
     return EXIT_FAILURE;
   }
 
-  bool result = split_file(file_read_pointer, &head, &tail);
+  bool result = split_file(hFile, &head, &tail);
   if (result == false)
   {
     cerr << "Failed to split file." << endl;
-    fclose(file_read_pointer);
+    vsiCloseFile(hFile);
     return EXIT_FAILURE;
   }
 
-  fclose(file_read_pointer);
+  vsiCloseFile(hFile);
 
   result = copy_data_list_with_multithreading(head);
   if (result == false)
